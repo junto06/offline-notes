@@ -1,0 +1,9 @@
+<resources>
+    <string name="login_title">Login</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_button">Login</string>
+    <string name="login_button_loading">Logging in…</string>
+    <string name="login_error_empty_fields">Email and password are required</string>
+    <string name="login_error_failed">Login failed. Please try again.</string>
+</resources>
