@@ -16,6 +16,9 @@ A simple notes app for Android that works fully offline and syncs to a backend w
 - **Backend error surfaced to you** — if a note fails to sync, the reason from the server is shown on the note.
 - **Offline-safe delete** — deleting a note while offline just marks it for deletion locally; it's removed from the list right away and actually deleted on the server on the next sync.
 
+  <img width="336" height="748" alt="Screenshot_20260908_121108" src="https://github.com/user-attachments/assets/0db8b385-8c1b-4662-a64e-d621050ace5c" />
+
+
 ## How offline sync works
 
 1. Every save or delete writes to the local database immediately and marks the note `Pending`.
