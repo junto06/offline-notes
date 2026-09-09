@@ -1,6 +1,25 @@
 spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/notes}
+    username: ${SPRING_DATASOURCE_USERNAME:notes}
+    password: ${SPRING_DATASOURCE_PASSWORD:notes}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
 
 server:
-  port: 8080
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

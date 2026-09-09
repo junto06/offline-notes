@@ -10,4 +10,7 @@ class UsersRepositoryImpl(
 ) : UsersRepository {
     override fun findByCredentials(email: String, password: String): User? =
         usersStore.findByCredentials(email, password)
+
+    override fun create(email: String, password: String, name: String): User? =
+        usersStore.create(email, password, name)
 }
