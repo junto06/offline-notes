@@ -7,12 +7,16 @@ import com.mudassar.notes.data.mapper.toDto
 import com.mudassar.notes.data.mapper.toEntity
 import com.mudassar.notes.data.mapper.toNote
 import com.mudassar.notes.data.mapper.toNotes
+import com.mudassar.notes.data.remote.ConflictDto
 import com.mudassar.notes.data.remote.ErrorResponseDto
 import com.mudassar.notes.data.remote.NotesService
+import com.mudassar.notes.data.remote.ResolveConflictRequestDto
 import com.mudassar.notes.data.remote.SyncNotesResponseDto
+import com.mudassar.notes.models.ConflictResolution
 import com.mudassar.notes.models.Note
 import com.mudassar.notes.models.NoteId
 import com.mudassar.notes.models.NoteStatus
+import com.mudassar.notes.models.ResolveConflictResult
 import com.mudassar.notes.repository.NoteRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
@@ -50,7 +54,7 @@ class NoteRepositoryImpl @Inject constructor(
         return try {
             val response = notesService.syncNotes(pending.map { it.toDto() })
             updateNotes(pending, response)
-            response.errors.isEmpty()
+            response.conflicts.isEmpty()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -69,14 +73,28 @@ class NoteRepositoryImpl @Inject constructor(
         val toDelete = mutableListOf<String>()
 
         for (note in pending) {
-            val failureReason = response.errors[note.id.value]
+            val conflict = response.conflicts[note.id.value]
             when {
-                failureReason != null ->
-                    toUpdate += note.copy(status = NoteStatus.ERROR, failureReason = failureReason)
+                conflict != null -> {
+                    toUpdate += note.copy(
+                        status = NoteStatus.CONFLICT,
+                        failureReason = conflict.reason,
+                        conflictServerVersion = conflict.serverVersion,
+                    )
+                }
 
-                note.deleted -> toDelete += note.id.value
+                note.deleted -> {
+                    toDelete += note.id.value
+                }
 
-                else -> toUpdate += note.copy(status = NoteStatus.SYNCED, failureReason = null)
+                else -> {
+                    toUpdate += note.copy(
+                        status = NoteStatus.SYNCED,
+                        failureReason = null,
+                        conflictServerVersion = null,
+                        version = response.versions[note.id.value] ?: note.version,
+                    )
+                }
             }
         }
 
@@ -106,5 +124,61 @@ class NoteRepositoryImpl @Inject constructor(
         val errorBody = (this as? HttpException)?.response()?.errorBody() ?: return null
         return runCatching { json.decodeFromString<ErrorResponseDto>(errorBody.string()).message }
             .getOrNull()
+    }
+
+    override suspend fun fetchNotes(): Boolean {
+        return try {
+            val remoteNotes = notesService.getAll()
+            noteDao.insertNotesIfAbsent(remoteNotes.map { it.toNote().toEntity() })
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            errorLogger.logError(e, "Failed to fetch notes from server")
+            false
+        }
+    }
+
+    override suspend fun resolveConflict(note: Note, resolution: ConflictResolution): ResolveConflictResult {
+        val expectedVersion = note.conflictServerVersion ?: note.version
+        val request = ResolveConflictRequestDto(
+            resolution = resolution.name,
+            title = note.title,
+            content = note.content,
+            version = expectedVersion,
+        )
+
+        return try {
+            val response = notesService.resolveConflict(note.id.value, request)
+            when {
+                response.isSuccessful -> {
+                    val body = response.body() ?: return ResolveConflictResult.Failed
+                    val resolved = body.toNote()
+                    noteDao.upsertNote(resolved.toEntity())
+                    ResolveConflictResult.Resolved(resolved)
+                }
+
+                response.code() == 409 -> {
+                    val conflict = response.errorBody()?.let {
+                        runCatching { json.decodeFromString<ConflictDto>(it.string()) }.getOrNull()
+                    } ?: return ResolveConflictResult.Failed
+                    noteDao.upsertNote(
+                        note.copy(
+                            status = NoteStatus.CONFLICT,
+                            failureReason = conflict.reason,
+                            conflictServerVersion = conflict.serverVersion,
+                        ).toEntity()
+                    )
+                    ResolveConflictResult.StillConflicting(conflict.serverVersion, conflict.reason)
+                }
+
+                else -> ResolveConflictResult.Failed
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            errorLogger.logError(e, "Failed to resolve conflict for note ${note.id.value}")
+            ResolveConflictResult.Failed
+        }
     }
 }

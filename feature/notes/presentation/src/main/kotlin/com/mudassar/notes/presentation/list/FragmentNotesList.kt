@@ -143,4 +143,5 @@ private fun NoteStatus.toColor(): Color = when (this) {
     NoteStatus.PENDING -> Color(0xFFFFC107)
     NoteStatus.SYNCED -> Color(0xFF4CAF50)
     NoteStatus.ERROR -> Color(0xFFF44336)
+    NoteStatus.CONFLICT -> Color(0xFF9C27B0)
 }

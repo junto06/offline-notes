@@ -11,6 +11,8 @@ data class Note(
     val status: NoteStatus = NoteStatus.PENDING,
     val failureReason: String? = null,
     val deleted: Boolean = false,
+    val version: Long,
+    val conflictServerVersion: Long? = null,
 )
 
 @JvmInline

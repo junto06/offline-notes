@@ -87,7 +87,7 @@ interface CommonModule {
             authenticator.ifPresent(builder::authenticator)
             builder.addInterceptor(
                 HttpLoggingInterceptor()
-                    .apply { level = HttpLoggingInterceptor.Level.NONE })
+                    .apply { level = HttpLoggingInterceptor.Level.BODY })
             return builder.build()
         }
 
