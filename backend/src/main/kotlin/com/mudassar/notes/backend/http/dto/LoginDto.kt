@@ -8,4 +8,15 @@ data class LoginRequestDto(
 data class LoginResponseDto(
     val id: String,
     val name: String,
+    val accessToken: String,
+    val refreshToken: String,
+)
+
+data class RefreshRequestDto(
+    val refreshToken: String,
+)
+
+data class RefreshResponseDto(
+    val accessToken: String,
+    val refreshToken: String,
 )
