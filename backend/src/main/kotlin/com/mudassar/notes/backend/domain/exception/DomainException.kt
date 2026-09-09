@@ -6,6 +6,9 @@ sealed class DomainException(
 ) : RuntimeException(message)
 
 enum class ErrorCode(val value: String) {
+    VALIDATION_ERROR("1010"),
+    EMAIL_ALREADY_IN_USE("1009"),
+    ROUTE_NOT_FOUND("1008"),
     NOTE_NOT_FOUND("1007"),
     INVALID_CREDENTIALS("1006"),
     INVALID_REFRESH_TOKEN("1005"),
@@ -32,3 +35,6 @@ class InvalidAccessTokenException :
 
 class NoteNotFoundException :
     DomainException("Note not found", errorCode = ErrorCode.NOTE_NOT_FOUND)
+
+class EmailAlreadyInUseException :
+    DomainException("Email is already in use", errorCode = ErrorCode.EMAIL_ALREADY_IN_USE)
