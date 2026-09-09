@@ -4,25 +4,34 @@ import com.mudassar.notes.base.DefaultDispatcherProvider
 import com.mudassar.notes.base.DispatcherProvider
 import com.mudassar.notes.base.ClockProvider
 import com.mudassar.notes.base.ErrorLogger
+import com.mudassar.notes.base.LocaleProvider
 import com.mudassar.notes.common.ClockProviderImpl
+import com.mudassar.notes.common.LocaleProviderImpl
 import com.mudassar.notes.common.http.BaseUrl
+import com.mudassar.notes.common.http.CommonHeadersInterceptor
 import com.mudassar.notes.common.navigation.RealNavigator
 import com.mudassar.notes.common.observability.TimberErrorLogger
 import com.mudassar.notes.common.storage.RealDataStoreFactory
 import com.mudassar.notes.navigation.Navigator
 import com.mudassar.notes.storage.DataStoreFactory
 import dagger.Binds
+import dagger.BindsOptionalOf
 import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import dagger.multibindings.IntoSet
+import dagger.multibindings.Multibinds
 import kotlinx.serialization.json.Json
+import okhttp3.Authenticator
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
+import java.util.Optional
 import javax.inject.Singleton
 
 @Module
@@ -38,10 +47,26 @@ interface CommonModule {
     fun bindTimeProvider(impl: ClockProviderImpl): ClockProvider
 
     @Binds
+    fun bindLocaleProvider(impl: LocaleProviderImpl): LocaleProvider
+
+    @Binds
     fun bindDataStoreFactory(impl: RealDataStoreFactory): DataStoreFactory
 
     @Binds
     fun bindErrorLogger(impl: TimberErrorLogger): ErrorLogger
+
+    // allow feature and other modules (e.g. auth) contribute request interceptors
+    @Multibinds
+    fun bindInterceptors(): Set<Interceptor>
+
+    @Binds
+    @IntoSet
+    fun bindCommonHeadersInterceptor(impl: CommonHeadersInterceptor): Interceptor
+
+    // Let auth feature module supply a token-refresh
+    // Authenticator without core depending on it
+    @BindsOptionalOf
+    fun bindAuthenticator(): Authenticator
 
     companion object {
         @Provides
@@ -53,12 +78,18 @@ interface CommonModule {
 
         @Provides
         @Singleton
-        fun provideOkHttpClient(): OkHttpClient =
-            OkHttpClient.Builder()
-                .addInterceptor(
-                    HttpLoggingInterceptor()
-                        .apply { level = HttpLoggingInterceptor.Level.BASIC })
-                .build()
+        fun provideOkHttpClient(
+            interceptors: Set<@JvmSuppressWildcards Interceptor>,
+            authenticator: Optional<Authenticator>,
+        ): OkHttpClient {
+            val builder = OkHttpClient.Builder()
+            interceptors.forEach(builder::addInterceptor)
+            authenticator.ifPresent(builder::authenticator)
+            builder.addInterceptor(
+                HttpLoggingInterceptor()
+                    .apply { level = HttpLoggingInterceptor.Level.NONE })
+            return builder.build()
+        }
 
         @Provides
         @Singleton

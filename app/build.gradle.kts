@@ -3,17 +3,19 @@ plugins {
     alias(libs.plugins.convention.hilt)
 }
 
-apply(from = "../version.gradle")
-
 android {
     namespace = "com.mudassar.notes"
 
     defaultConfig {
         applicationId = "com.mudassar.notes"
-        versionCode = project.extra["versionCode"] as Int
-        versionName = project.extra["versionName"] as String
+        versionCode = (property("VERSION_CODE") as String).toInt()
+        versionName = property("VERSION_NAME") as String
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
@@ -32,6 +34,7 @@ dependencies {
     implementation(projects.feature.notes.data)
     implementation(projects.offlineSync)
     implementation(projects.domain)
+    implementation(projects.core.base)
 
     implementation(projects.core.common)
 

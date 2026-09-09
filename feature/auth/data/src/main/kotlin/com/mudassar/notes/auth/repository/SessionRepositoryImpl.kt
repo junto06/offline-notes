@@ -15,4 +15,8 @@ class SessionRepositoryImpl @Inject constructor(
     override suspend fun startSession(user: User) {
         dataStore.updateData { user }
     }
+
+    override suspend fun clearSession() {
+        dataStore.updateData { null }
+    }
 }
