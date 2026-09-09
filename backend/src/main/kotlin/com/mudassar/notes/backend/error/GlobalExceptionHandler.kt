@@ -1,7 +1,12 @@
 package com.mudassar.notes.backend.error
 
+import com.mudassar.notes.backend.domain.exception.DomainException
 import com.mudassar.notes.backend.domain.exception.ErrorCode
+import com.mudassar.notes.backend.domain.exception.InvalidAccessTokenException
+import com.mudassar.notes.backend.domain.exception.InvalidCredentialsException
 import com.mudassar.notes.backend.domain.exception.InvalidPlatformHeaderException
+import com.mudassar.notes.backend.domain.exception.InvalidRefreshTokenException
+import com.mudassar.notes.backend.domain.exception.MissingAccessTokenException
 import com.mudassar.notes.backend.http.dto.ErrorResponseDto
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -17,6 +22,16 @@ class GlobalExceptionHandler {
     @ExceptionHandler(InvalidPlatformHeaderException::class)
     fun handleBadRequest(e: InvalidPlatformHeaderException): ResponseEntity<ErrorResponseDto> =
         ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponseDto(message = e.message.orEmpty(), errorCode = e.errorCode.value))
+
+    @ExceptionHandler(
+        InvalidCredentialsException::class,
+        InvalidRefreshTokenException::class,
+        MissingAccessTokenException::class,
+        InvalidAccessTokenException::class,
+    )
+    fun handleUnauthorized(e: DomainException): ResponseEntity<ErrorResponseDto> =
+        ResponseEntity.status(HttpStatus.UNAUTHORIZED)
             .body(ErrorResponseDto(message = e.message.orEmpty(), errorCode = e.errorCode.value))
 
     @ExceptionHandler(Exception::class)
