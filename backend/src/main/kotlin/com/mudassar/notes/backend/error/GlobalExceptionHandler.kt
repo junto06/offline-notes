@@ -7,6 +7,7 @@ import com.mudassar.notes.backend.domain.exception.InvalidCredentialsException
 import com.mudassar.notes.backend.domain.exception.InvalidPlatformHeaderException
 import com.mudassar.notes.backend.domain.exception.InvalidRefreshTokenException
 import com.mudassar.notes.backend.domain.exception.MissingAccessTokenException
+import com.mudassar.notes.backend.domain.exception.NoteNotFoundException
 import com.mudassar.notes.backend.http.dto.ErrorResponseDto
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -32,6 +33,11 @@ class GlobalExceptionHandler {
     )
     fun handleUnauthorized(e: DomainException): ResponseEntity<ErrorResponseDto> =
         ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(ErrorResponseDto(message = e.message.orEmpty(), errorCode = e.errorCode.value))
+
+    @ExceptionHandler(NoteNotFoundException::class)
+    fun handleNotFound(e: NoteNotFoundException): ResponseEntity<ErrorResponseDto> =
+        ResponseEntity.status(HttpStatus.NOT_FOUND)
             .body(ErrorResponseDto(message = e.message.orEmpty(), errorCode = e.errorCode.value))
 
     @ExceptionHandler(Exception::class)
