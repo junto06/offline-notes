@@ -6,6 +6,7 @@ sealed class DomainException(
 ) : RuntimeException(message)
 
 enum class ErrorCode(val value: String) {
+    NOTE_NOT_FOUND("1007"),
     INVALID_CREDENTIALS("1006"),
     INVALID_REFRESH_TOKEN("1005"),
     MISSING_ACCESS_TOKEN("1004"),
@@ -28,3 +29,6 @@ class MissingAccessTokenException :
 
 class InvalidAccessTokenException :
     DomainException("Invalid or expired access token", errorCode = ErrorCode.INVALID_ACCESS_TOKEN)
+
+class NoteNotFoundException :
+    DomainException("Note not found", errorCode = ErrorCode.NOTE_NOT_FOUND)
