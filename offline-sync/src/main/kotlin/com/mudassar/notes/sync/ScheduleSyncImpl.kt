@@ -9,8 +9,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import com.mudassar.notes.repository.SessionRepository
+import com.mudassar.notes.repository.isLoggedIn
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -20,8 +20,8 @@ class ScheduleSyncImpl @Inject constructor(
 ) : ScheduleSync {
 
     override suspend fun schedule() {
-        // don't trigger sync if not loggedIn
-        if (sessionRepository.observeUser().first() == null) return
+        // Ignore sync if not loggedIn
+        if (!sessionRepository.isLoggedIn()) return
 
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
