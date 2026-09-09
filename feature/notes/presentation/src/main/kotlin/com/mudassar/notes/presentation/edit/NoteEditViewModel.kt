@@ -5,11 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mudassar.notes.navigation.Navigator
 import com.mudassar.notes.navigation.popBackStack
+import com.mudassar.notes.models.ConflictResolution
 import com.mudassar.notes.models.Note
 import com.mudassar.notes.models.NoteId
+import com.mudassar.notes.models.NoteStatus
+import com.mudassar.notes.models.ResolveConflictResult
+import com.mudassar.notes.presentation.edit.NoteEditUiState.Conflict
 import com.mudassar.notes.presentation.edit.NoteEditUiState.Editing
 import com.mudassar.notes.usecases.DeleteNoteUseCase
 import com.mudassar.notes.usecases.LoadNoteForEditUseCase
+import com.mudassar.notes.usecases.ResolveConflictUseCase
 import com.mudassar.notes.usecases.SaveNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +30,7 @@ class NoteEditViewModel @Inject constructor(
     loadNoteForEditUseCase: LoadNoteForEditUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
+    private val resolveConflictUseCase: ResolveConflictUseCase,
     private val navigator: Navigator,
 ) : ViewModel() {
 
@@ -37,24 +43,20 @@ class NoteEditViewModel @Inject constructor(
         viewModelScope.launch {
             loadNoteForEditUseCase(noteId)
                 .collect { note ->
-                    _state.update { current ->
-                        // restore state only from SavedStateHandle if current state is Loading
-                        val newNote = when (current) {
-                            is NoteEditUiState.Loading -> {
-                                restoreDraft(note)
-                            }
-
-                            is Editing -> {
-                                note.copy(
-                                    title = current.note.title,
-                                    content = current.note.content
-                                )
-                            }
-                        }
-                        Editing(note = newNote, isSaved = noteId != null)
-                    }
+                    _state.update { current -> nextState(current, note) }
                 }
         }
+    }
+
+    private fun nextState(current: NoteEditUiState, note: Note): NoteEditUiState {
+        if (note.status == NoteStatus.CONFLICT) return Conflict(note = note)
+
+        // restore state only from SavedStateHandle if current state isn't already Editing
+        val newNote = when (current) {
+            is Editing -> note.copy(title = current.note.title, content = current.note.content)
+            NoteEditUiState.Loading, is Conflict -> restoreDraft(note)
+        }
+        return Editing(note = newNote, isSaved = noteId != null)
     }
 
     fun onTitleChanged(title: String) = updateNote { it.copy(title = title) }
@@ -102,6 +104,32 @@ class NoteEditViewModel @Inject constructor(
         }
     }
 
+    fun onKeepMineClicked() = resolveConflict(ConflictResolution.KEEP_MINE)
+
+    fun onKeepRemoteClicked() = resolveConflict(ConflictResolution.KEEP_REMOTE)
+
+    private fun resolveConflict(resolution: ConflictResolution) {
+        val conflict = _state.value as? Conflict ?: return
+        if (conflict.isResolving) return
+        _state.value = conflict.copy(isResolving = true)
+
+        viewModelScope.launch {
+            when (val result = resolveConflictUseCase(conflict.note, resolution)) {
+                is ResolveConflictResult.Resolved -> navigator.popBackStack()
+
+                is ResolveConflictResult.StillConflicting -> _state.value = Conflict(
+                    note = conflict.note.copy(
+                        failureReason = result.reason,
+                        conflictServerVersion = result.serverVersion,
+                    ),
+                    isResolving = false,
+                )
+
+                ResolveConflictResult.Failed -> _state.value = conflict.copy(isResolving = false)
+            }
+        }
+    }
+
     fun onBackClicked() {
         navigator.popBackStack()
     }
@@ -120,5 +148,9 @@ sealed interface NoteEditUiState {
     data class Editing(
         val note: Note,
         val isSaved: Boolean
+    ) : NoteEditUiState
+    data class Conflict(
+        val note: Note,
+        val isResolving: Boolean = false,
     ) : NoteEditUiState
 }

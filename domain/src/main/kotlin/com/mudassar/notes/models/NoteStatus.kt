@@ -4,4 +4,5 @@ enum class NoteStatus {
     PENDING,
     SYNCED,
     ERROR,
+    CONFLICT,
 }

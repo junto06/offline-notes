@@ -13,4 +13,6 @@ data class NoteEntity(
     val status: String,
     val failureReason: String?,
     val deleted: Boolean,
+    val version: Long,
+    val conflictServerVersion: Long?,
 )

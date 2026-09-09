@@ -17,6 +17,7 @@ class NewNoteUseCase @Inject constructor(
             content = "",
             createdAt = now,
             updatedAt = now,
+            version = 0,
         )
     }
 }

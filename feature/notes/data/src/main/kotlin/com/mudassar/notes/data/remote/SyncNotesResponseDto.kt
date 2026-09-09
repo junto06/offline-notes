@@ -4,5 +4,6 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class SyncNotesResponseDto(
-    val errors: Map<String, String> = emptyMap(),
+    val conflicts: Map<String, ConflictDto> = emptyMap(),
+    val versions: Map<String, Long> = emptyMap(),
 )
