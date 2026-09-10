@@ -6,7 +6,9 @@ import com.mudassar.notes.data.local.NoteDao
 import com.mudassar.notes.data.local.NoteDatabase
 import com.mudassar.notes.data.remote.NotesService
 import com.mudassar.notes.data.repository.NoteRepositoryImpl
+import com.mudassar.notes.data.repository.SyncStateRepositoryImpl
 import com.mudassar.notes.repository.NoteRepository
+import com.mudassar.notes.repository.SyncStateRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,6 +23,9 @@ import javax.inject.Singleton
 class NoteModule {
     @Provides
     fun provideNoteRepository(repository: NoteRepositoryImpl): NoteRepository = repository
+
+    @Provides
+    fun provideSyncStateRepository(repository: SyncStateRepositoryImpl): SyncStateRepository = repository
 
     @Provides
     @Singleton

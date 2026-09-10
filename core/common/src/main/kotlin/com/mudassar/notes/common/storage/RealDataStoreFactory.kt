@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.mudassar.notes.storage.DataStoreFactory
 import com.mudassar.notes.storage.LocalDataStore
@@ -41,6 +42,13 @@ private class PreferencesLocalDataStore(
 
     override suspend fun setBoolean(key: String, value: Boolean) {
         dataStore.edit { it[booleanPreferencesKey(key)] = value }
+    }
+
+    override suspend fun getLong(key: String, defaultValue: Long): Long =
+        dataStore.data.first()[longPreferencesKey(key)] ?: defaultValue
+
+    override suspend fun setLong(key: String, value: Long) {
+        dataStore.edit { it[longPreferencesKey(key)] = value }
     }
 
     override suspend fun remove(key: String) {

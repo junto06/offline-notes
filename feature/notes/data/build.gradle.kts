@@ -14,6 +14,7 @@ room {
 dependencies {
     implementation(projects.domain)
     implementation(projects.core.base)
+    implementation(projects.core.storage)
 
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)

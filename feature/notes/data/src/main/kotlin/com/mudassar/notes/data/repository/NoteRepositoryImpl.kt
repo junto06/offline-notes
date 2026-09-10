@@ -19,6 +19,7 @@ import com.mudassar.notes.models.NoteId
 import com.mudassar.notes.models.NoteStatus
 import com.mudassar.notes.models.ResolveConflictResult
 import com.mudassar.notes.repository.NoteRepository
+import com.mudassar.notes.repository.SyncStateRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -33,6 +34,7 @@ class NoteRepositoryImpl @Inject constructor(
     private val notesService: NotesService,
     private val json: Json,
     private val errorLogger: ErrorLogger,
+    private val syncStateRepository: SyncStateRepository,
 ) : NoteRepository {
 
     override fun observeNotes(): Flow<List<Note>> =
@@ -129,7 +131,8 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun fetchNotes(): Boolean {
         return try {
-            storeFetchedNotes(notesService.getAll())
+            val since = syncStateRepository.getLastSyncTimestamp().takeIf { it > 0 }
+            storeFetchedNotes(notesService.getAll(since))
             true
         } catch (e: CancellationException) {
             throw e
@@ -157,6 +160,10 @@ class NoteRepositoryImpl @Inject constructor(
         if (toUpsert.isNotEmpty()) {
             noteDao.upsertNotes(toUpsert.map { it.toNote().toEntity() })
         }
+
+        // Only advance the cursor past changes we actually applied
+        applicable.maxOfOrNull { it.updatedAt }
+            ?.let { syncStateRepository.updateLastSyncTimestamp(it) }
     }
 
     override suspend fun resolveConflict(note: Note, resolution: ConflictResolution): ResolveConflictResult {
