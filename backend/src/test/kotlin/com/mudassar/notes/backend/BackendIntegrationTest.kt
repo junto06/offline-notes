@@ -163,4 +163,70 @@ class BackendIntegrationTest {
         )
         assertThat(requireNotNull(getAllResponse.body).first { it.id == noteId }.deleted).isTrue()
     }
+
+    @Test
+    fun `since filters out notes that haven't changed`() {
+        val email = "${UUID.randomUUID()}@example.com"
+        restTemplate.postForEntity(
+            "/auth/signup",
+            HttpEntity(SignupRequestDto(email = email, password = "password", name = "Test User"), headers()),
+            SignupResponseDto::class.java,
+        )
+        val loginResponse = restTemplate.postForEntity(
+            "/auth/login",
+            HttpEntity(LoginRequestDto(email = email, password = "password"), headers()),
+            LoginResponseDto::class.java,
+        )
+        val accessToken = requireNotNull(loginResponse.body).accessToken
+        val authHeaders = headers().apply { setBearerAuth(accessToken) }
+
+        val oldNoteId = UUID.randomUUID().toString()
+        val oldNote = NoteDto(
+            id = oldNoteId,
+            title = "Old note",
+            content = "content",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+            operation = "UPDATE",
+            version = 0,
+        )
+        restTemplate.postForEntity(
+            "/notes/sync",
+            HttpEntity(listOf(oldNote), authHeaders),
+            SyncNotesResponseDto::class.java,
+        )
+
+        val cursor = System.currentTimeMillis()
+
+        val newNoteId = UUID.randomUUID().toString()
+        val newNote = oldNote.copy(
+            id = newNoteId,
+            title = "New note",
+            updatedAt = System.currentTimeMillis(),
+        )
+        restTemplate.postForEntity(
+            "/notes/sync",
+            HttpEntity(listOf(newNote), authHeaders),
+            SyncNotesResponseDto::class.java,
+        )
+
+        val sinceCursorResponse = restTemplate.exchange(
+            "/notes?since=$cursor",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            Array<NoteResponseDto>::class.java,
+        )
+        val idsSinceCursor = requireNotNull(sinceCursorResponse.body).map { it.id }
+        assertThat(idsSinceCursor).contains(newNoteId)
+        assertThat(idsSinceCursor).doesNotContain(oldNoteId)
+
+        // Unfiltered fetch is unaffected - still returns everything.
+        val getAllResponse = restTemplate.exchange(
+            "/notes",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            Array<NoteResponseDto>::class.java,
+        )
+        assertThat(requireNotNull(getAllResponse.body).map { it.id }).contains(oldNoteId, newNoteId)
+    }
 }

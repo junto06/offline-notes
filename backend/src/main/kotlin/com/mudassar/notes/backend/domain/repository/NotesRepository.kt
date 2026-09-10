@@ -13,7 +13,7 @@ interface NotesRepository {
     // the stored version, or null on success.
     fun delete(note: NoteSync): NotesConflict?
 
-    fun getAll(userId: UserId): List<NoteSync>
+    fun getAll(userId: UserId, since: Long? = null): List<NoteSync>
 
     fun getById(userId: UserId, id: String): NoteSync?
 }

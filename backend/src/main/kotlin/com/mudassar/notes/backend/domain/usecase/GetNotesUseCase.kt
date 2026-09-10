@@ -9,6 +9,6 @@ import org.springframework.stereotype.Service
 class GetNotesUseCase(
     private val notesRepository: NotesRepository,
 ) {
-    operator fun invoke(userId: UserId): List<NoteSync> =
-        notesRepository.getAll(userId)
+    operator fun invoke(userId: UserId, since: Long? = null): List<NoteSync> =
+        notesRepository.getAll(userId, since)
 }

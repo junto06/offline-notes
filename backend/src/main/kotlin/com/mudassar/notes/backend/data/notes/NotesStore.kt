@@ -8,7 +8,7 @@ interface NotesStore {
     // to the caller.
     fun <R> update(userId: String, id: String, update: (NoteSync?) -> Update<R>): R
 
-    fun getAll(userId: String): List<NoteSync>
+    fun getAll(userId: String, since: Long? = null): List<NoteSync>
 
     fun get(userId: String, id: String): NoteSync?
 

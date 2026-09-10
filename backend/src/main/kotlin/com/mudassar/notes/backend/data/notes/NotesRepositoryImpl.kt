@@ -57,8 +57,8 @@ class NotesRepositoryImpl(
             }
         }
 
-    override fun getAll(userId: UserId): List<NoteSync> =
-        notesStore.getAll(userId.value)
+    override fun getAll(userId: UserId, since: Long?): List<NoteSync> =
+        notesStore.getAll(userId.value, since)
 
     override fun getById(userId: UserId, id: String): NoteSync? =
         notesStore.get(userId.value, id)
