@@ -3,6 +3,7 @@ package com.mudassar.notes.backend.http
 import com.mudassar.notes.backend.configurations.BEARER_AUTH_SCHEME
 import com.mudassar.notes.backend.configurations.UserContext
 import com.mudassar.notes.backend.domain.model.ResolveNotesConflictOutcome
+import com.mudassar.notes.backend.domain.usecase.GetNoteUseCase
 import com.mudassar.notes.backend.domain.usecase.GetNotesUseCase
 import com.mudassar.notes.backend.domain.usecase.ResolveConflictUseCase
 import com.mudassar.notes.backend.domain.usecase.SyncUseCase
@@ -30,12 +31,29 @@ import org.springframework.web.bind.annotation.RestController
 class SyncController(
     private val syncUseCase: SyncUseCase,
     private val getNotesUseCase: GetNotesUseCase,
+    private val getNoteUseCase: GetNoteUseCase,
     private val resolveConflictUseCase: ResolveConflictUseCase,
 ) {
     @GetMapping
     @SecurityRequirement(name = BEARER_AUTH_SCHEME)
     fun UserContext.getAll(@RequestParam(required = false) since: Long?): List<NoteResponseDto> =
         getNotesUseCase(userId, since).map { it.toResponseDto() }
+
+    // Conditional fetch, pass the version already held locally and get 204 (nobody)
+    // back if nothing changed, instead of re-transferring a note that's already up to date.
+    @GetMapping("/{id}")
+    @SecurityRequirement(name = BEARER_AUTH_SCHEME)
+    fun UserContext.getById(
+        @PathVariable id: String,
+        @RequestParam(required = false) version: Long?,
+    ): ResponseEntity<NoteResponseDto> {
+        val note = getNoteUseCase(userId, id) ?: return ResponseEntity.notFound().build()
+        if (version != null && version == note.version) {
+            // 204 NoContent
+            return ResponseEntity.noContent().build()
+        }
+        return ResponseEntity.ok(note.toResponseDto())
+    }
 
     @PostMapping("/sync")
     @SecurityRequirement(name = BEARER_AUTH_SCHEME)

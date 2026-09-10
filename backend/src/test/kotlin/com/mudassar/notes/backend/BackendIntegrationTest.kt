@@ -229,4 +229,77 @@ class BackendIntegrationTest {
         )
         assertThat(requireNotNull(getAllResponse.body).map { it.id }).contains(oldNoteId, newNoteId)
     }
+
+    @Test
+    fun `get by id is empty when the caller's version is already current`() {
+        val email = "${UUID.randomUUID()}@example.com"
+        restTemplate.postForEntity(
+            "/auth/signup",
+            HttpEntity(SignupRequestDto(email = email, password = "password", name = "Test User"), headers()),
+            SignupResponseDto::class.java,
+        )
+        val loginResponse = restTemplate.postForEntity(
+            "/auth/login",
+            HttpEntity(LoginRequestDto(email = email, password = "password"), headers()),
+            LoginResponseDto::class.java,
+        )
+        val accessToken = requireNotNull(loginResponse.body).accessToken
+        val authHeaders = headers().apply { setBearerAuth(accessToken) }
+
+        val noteId = UUID.randomUUID().toString()
+        val note = NoteDto(
+            id = noteId,
+            title = "Detail page note",
+            content = "content",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+            operation = "UPDATE",
+            version = 0,
+        )
+        val syncResponse = restTemplate.postForEntity(
+            "/notes/sync",
+            HttpEntity(listOf(note), authHeaders),
+            SyncNotesResponseDto::class.java,
+        )
+        val currentVersion = requireNotNull(requireNotNull(syncResponse.body).versions[noteId])
+
+        // No version supplied - full note comes back.
+        val noVersionResponse = restTemplate.exchange(
+            "/notes/$noteId",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            NoteResponseDto::class.java,
+        )
+        assertThat(noVersionResponse.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(requireNotNull(noVersionResponse.body).title).isEqualTo("Detail page note")
+
+        // Caller's version matches the server's - empty response, nothing to transfer.
+        val matchingVersionResponse = restTemplate.exchange(
+            "/notes/$noteId?version=$currentVersion",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            NoteResponseDto::class.java,
+        )
+        assertThat(matchingVersionResponse.statusCode).isEqualTo(HttpStatus.NO_CONTENT)
+        assertThat(matchingVersionResponse.body).isNull()
+
+        // Caller's version is stale - full note comes back again.
+        val staleVersionResponse = restTemplate.exchange(
+            "/notes/$noteId?version=${currentVersion - 1}",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            NoteResponseDto::class.java,
+        )
+        assertThat(staleVersionResponse.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(requireNotNull(staleVersionResponse.body).version).isEqualTo(currentVersion)
+
+        // Unknown note id - 404.
+        val missingResponse = restTemplate.exchange(
+            "/notes/${UUID.randomUUID()}",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            NoteResponseDto::class.java,
+        )
+        assertThat(missingResponse.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
+    }
 }
