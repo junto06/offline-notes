@@ -49,7 +49,7 @@ fun NoteResponseDto.toNote(): Note = Note(
     updatedAt = Instant.fromEpochMilliseconds(updatedAt),
     status = NoteStatus.SYNCED,
     failureReason = null,
-    deleted = false,
+    deleted = deleted,
     version = version,
     conflictServerVersion = null,
 )
