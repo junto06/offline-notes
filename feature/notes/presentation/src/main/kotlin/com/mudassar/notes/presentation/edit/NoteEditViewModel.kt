@@ -14,11 +14,15 @@ import com.mudassar.notes.presentation.edit.NoteEditUiState.Conflict
 import com.mudassar.notes.presentation.edit.NoteEditUiState.Editing
 import com.mudassar.notes.usecases.DeleteNoteUseCase
 import com.mudassar.notes.usecases.LoadNoteForEditUseCase
+import com.mudassar.notes.usecases.RefreshNoteUseCase
 import com.mudassar.notes.usecases.ResolveConflictUseCase
 import com.mudassar.notes.usecases.SaveNoteUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -28,6 +32,7 @@ import javax.inject.Inject
 class NoteEditViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     loadNoteForEditUseCase: LoadNoteForEditUseCase,
+    refreshNoteUseCase: RefreshNoteUseCase,
     private val saveNoteUseCase: SaveNoteUseCase,
     private val deleteNoteUseCase: DeleteNoteUseCase,
     private val resolveConflictUseCase: ResolveConflictUseCase,
@@ -39,12 +44,28 @@ class NoteEditViewModel @Inject constructor(
     private val _state = MutableStateFlow<NoteEditUiState>(NoteEditUiState.Loading)
     val state: StateFlow<NoteEditUiState> = _state.asStateFlow()
 
+    private val _events = MutableSharedFlow<NoteEditEvent>(extraBufferCapacity = 1)
+    val events: SharedFlow<NoteEditEvent> = _events.asSharedFlow()
+
     init {
         viewModelScope.launch {
             loadNoteForEditUseCase(noteId)
                 .collect { note ->
-                    _state.update { current -> nextState(current, note) }
+                    if (note == null) {
+                        // deleted on another device, show error message and navigate back
+                        _events.emit(NoteEditEvent.NoteDeletedRemotely)
+                        navigator.popBackStack()
+                    } else {
+                        _state.update { current -> nextState(current, note) }
+                    }
                 }
+        }
+        // Show local content immediately & refreshes it in the background
+        // if another device changed the note since it was last synced here
+        noteId?.let { id ->
+            viewModelScope.launch {
+                refreshNoteUseCase(id)
+            }
         }
     }
 
@@ -141,6 +162,10 @@ class NoteEditViewModel @Inject constructor(
         const val KEY_DRAFT_TITLE = "draft_title"
         const val KEY_DRAFT_CONTENT = "draft_content"
     }
+}
+
+sealed interface NoteEditEvent {
+    data object NoteDeletedRemotely : NoteEditEvent
 }
 
 sealed interface NoteEditUiState {
