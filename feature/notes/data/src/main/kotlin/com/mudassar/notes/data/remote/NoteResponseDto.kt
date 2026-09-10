@@ -11,4 +11,5 @@ data class NoteResponseDto(
     @SerialName("created_at") val createdAt: Long,
     @SerialName("updated_at") val updatedAt: Long,
     val version: Long,
+    val deleted: Boolean,
 )

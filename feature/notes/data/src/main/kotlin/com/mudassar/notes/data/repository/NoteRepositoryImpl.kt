@@ -9,6 +9,7 @@ import com.mudassar.notes.data.mapper.toNote
 import com.mudassar.notes.data.mapper.toNotes
 import com.mudassar.notes.data.remote.ConflictDto
 import com.mudassar.notes.data.remote.ErrorResponseDto
+import com.mudassar.notes.data.remote.NoteResponseDto
 import com.mudassar.notes.data.remote.NotesService
 import com.mudassar.notes.data.remote.ResolveConflictRequestDto
 import com.mudassar.notes.data.remote.SyncNotesResponseDto
@@ -128,14 +129,33 @@ class NoteRepositoryImpl @Inject constructor(
 
     override suspend fun fetchNotes(): Boolean {
         return try {
-            val remoteNotes = notesService.getAll()
-            noteDao.insertNotesIfAbsent(remoteNotes.map { it.toNote().toEntity() })
+            storeFetchedNotes(notesService.getAll())
             true
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             errorLogger.logError(e, "Failed to fetch notes from server")
             false
+        }
+    }
+
+    private suspend fun storeFetchedNotes(remoteNotes: List<NoteResponseDto>) {
+        if (remoteNotes.isEmpty()) return
+        val remoteIds = remoteNotes.map { it.id }
+        val localIds = noteDao.getNotesByIds(remoteIds).associateBy { it.id }
+        // ignore any notes that are PENDING/ERROR/CONFLICT as that will get
+        // resolved as a normal version conflict the next time it's pushed.
+        val applicable = remoteNotes.filter { note ->
+            val localStatus = localIds[note.id]?.status
+            localStatus == null || localStatus == NoteStatus.SYNCED.name
+        }
+        val (toDelete, toUpsert) = applicable.partition { it.deleted }
+
+        if (toDelete.isNotEmpty()) {
+            noteDao.deleteNotes(toDelete.map { it.id })
+        }
+        if (toUpsert.isNotEmpty()) {
+            noteDao.upsertNotes(toUpsert.map { it.toNote().toEntity() })
         }
     }
 
