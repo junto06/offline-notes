@@ -12,6 +12,7 @@ import com.mudassar.notes.navigation.Deeplink
 import com.mudassar.notes.navigation.NavigationEvent
 import com.mudassar.notes.navigation.PopBackStack
 import com.mudassar.notes.navigation.FragmentDestinationEvent
+import com.mudassar.notes.sync.SingleScheduleFetch
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,6 +23,9 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var navigator: RealNavigator
 
+    @Inject
+    lateinit var singleScheduleFetch: SingleScheduleFetch
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -29,6 +33,10 @@ class MainActivity : AppCompatActivity() {
         val controller =
             supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         handleNavigation(controller.navController)
+        if (savedInstanceState == null) {
+            // trigger a refresh
+            lifecycleScope.launch { singleScheduleFetch.schedule() }
+        }
     }
 
     private fun handleNavigation(controller: NavController) {
