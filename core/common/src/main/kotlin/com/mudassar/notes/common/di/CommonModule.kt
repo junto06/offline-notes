@@ -1,8 +1,9 @@
 package com.mudassar.notes.common.di
 
+import com.mudassar.notes.base.BuildInfo
+import com.mudassar.notes.base.ClockProvider
 import com.mudassar.notes.base.DefaultDispatcherProvider
 import com.mudassar.notes.base.DispatcherProvider
-import com.mudassar.notes.base.ClockProvider
 import com.mudassar.notes.base.ErrorLogger
 import com.mudassar.notes.base.LocaleProvider
 import com.mudassar.notes.common.ClockProviderImpl
@@ -95,10 +96,11 @@ interface CommonModule {
         @Singleton
         fun provideRetrofit(
             baseUrl: BaseUrl,
+            buildInfo: BuildInfo,
             okHttpClient: Lazy<OkHttpClient>,
             json: Json,
         ): Retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl())
+            .baseUrl(baseUrl(buildInfo.environment))
             .callFactory { request -> okHttpClient.get().newCall(request) }
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()

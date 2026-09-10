@@ -4,6 +4,8 @@ import com.mudassar.notes.sync.ScheduleFetch
 import com.mudassar.notes.sync.ScheduleFetchImpl
 import com.mudassar.notes.sync.ScheduleSync
 import com.mudassar.notes.sync.ScheduleSyncImpl
+import com.mudassar.notes.sync.SingleScheduleFetch
+import com.mudassar.notes.sync.SingleScheduleFetchImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,4 +19,7 @@ class SyncModule {
 
     @Provides
     fun provideScheduleFetch(impl: ScheduleFetchImpl): ScheduleFetch = impl
+
+    @Provides
+    fun provideSingleScheduleFetch(impl: SingleScheduleFetchImpl): SingleScheduleFetch = impl
 }

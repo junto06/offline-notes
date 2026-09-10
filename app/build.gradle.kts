@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.convention.hilt)
 }
 
+val stagingOverrideUrl = project.findProperty("stagingOverrideUrl") as String?
+
 android {
     namespace = "com.mudassar.notes"
 
@@ -12,6 +14,8 @@ android {
         versionName = property("VERSION_NAME") as String
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "STAGING_OVERRIDE_URL", stagingOverrideUrl?.let { "\"$it\"" } ?: "null")
     }
 
     buildFeatures {
