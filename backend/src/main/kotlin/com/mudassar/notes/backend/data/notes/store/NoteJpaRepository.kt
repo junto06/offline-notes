@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query
 interface NoteJpaRepository : JpaRepository<NoteEntity, String> {
     fun findAllByUserId(userId: String): List<NoteEntity>
 
+    fun findAllByUserIdAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(userId: String, since: Long): List<NoteEntity>
+
     fun findByUserIdAndId(userId: String, id: String): NoteEntity?
 
     // Locks the row (or its absence) for the duration of the enclosing transaction, so a

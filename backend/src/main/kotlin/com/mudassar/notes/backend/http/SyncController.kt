@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
@@ -33,8 +34,8 @@ class SyncController(
 ) {
     @GetMapping
     @SecurityRequirement(name = BEARER_AUTH_SCHEME)
-    fun UserContext.getAll(): List<NoteResponseDto> =
-        getNotesUseCase(userId).map { it.toResponseDto() }
+    fun UserContext.getAll(@RequestParam(required = false) since: Long?): List<NoteResponseDto> =
+        getNotesUseCase(userId, since).map { it.toResponseDto() }
 
     @PostMapping("/sync")
     @SecurityRequirement(name = BEARER_AUTH_SCHEME)

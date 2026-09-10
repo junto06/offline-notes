@@ -23,8 +23,13 @@ class JpaNotesStore(
         return result
     }
 
-    override fun getAll(userId: String): List<NoteSync> =
-        noteJpaRepository.findAllByUserId(userId).map { it.toDomain() }
+    override fun getAll(userId: String, since: Long?): List<NoteSync> =
+        if (since != null) {
+            noteJpaRepository.findAllByUserIdAndUpdatedAtGreaterThanEqualOrderByUpdatedAtAsc(userId, since)
+                .map { it.toDomain() }
+        } else {
+            noteJpaRepository.findAllByUserId(userId).map { it.toDomain() }
+        }
 
     override fun get(userId: String, id: String): NoteSync? =
         noteJpaRepository.findByUserIdAndId(userId, id)?.toDomain()
