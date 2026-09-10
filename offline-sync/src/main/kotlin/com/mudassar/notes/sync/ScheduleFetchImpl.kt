@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
-private const val FETCH_INTERVAL_MINUTES = 15L
+private const val FETCH_INTERVAL_MINUTES = 60L
 
 class ScheduleFetchImpl @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -32,7 +32,7 @@ class ScheduleFetchImpl @Inject constructor(
             .build()
 
         // UPDATE refreshes constraints without resetting an already-running schedule - schedule()
-        // gets called on every login, so this shouldn't restart the 15-minute cycle each time.
+        // gets called on every login, so this shouldn't restart the 60-minute cycle each time.
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             "notes_fetch_work",
             ExistingPeriodicWorkPolicy.UPDATE,

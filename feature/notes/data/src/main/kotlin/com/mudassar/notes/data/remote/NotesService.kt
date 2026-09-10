@@ -5,10 +5,13 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface NotesService {
     @GET("notes")
-    suspend fun getAll(): List<NoteResponseDto>
+    suspend fun getAll(
+        @Query("since") since: Long? = null
+    ): List<NoteResponseDto>
 
     @POST("notes/sync")
     suspend fun syncNotes(@Body notes: List<NoteDto>): SyncNotesResponseDto

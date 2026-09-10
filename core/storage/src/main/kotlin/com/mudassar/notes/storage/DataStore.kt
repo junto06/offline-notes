@@ -13,6 +13,8 @@ interface DataStoreFactory {
 interface LocalDataStore {
     suspend fun getBoolean(key: String, defaultValue: Boolean): Boolean
     suspend fun setBoolean(key: String, value: Boolean)
+    suspend fun getLong(key: String, defaultValue: Long): Long
+    suspend fun setLong(key: String, value: Long)
     suspend fun remove(key: String)
     suspend fun clear()
 }
