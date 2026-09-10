@@ -13,8 +13,16 @@ interface NotesService {
         @Query("since") since: Long? = null
     ): List<NoteResponseDto>
 
+    @GET("notes/{id}")
+    suspend fun getById(
+        @Path("id") id: String,
+        @Query("version") version: Long? = null,
+    ): Response<NoteResponseDto>
+
     @POST("notes/sync")
-    suspend fun syncNotes(@Body notes: List<NoteDto>): SyncNotesResponseDto
+    suspend fun syncNotes(
+        @Body notes: List<NoteDto>
+    ): SyncNotesResponseDto
 
     @POST("notes/{id}/resolve")
     suspend fun resolveConflict(

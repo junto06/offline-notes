@@ -166,6 +166,55 @@ class NoteRepositoryImpl @Inject constructor(
             ?.let { syncStateRepository.updateLastSyncTimestamp(it) }
     }
 
+    override suspend fun refreshNote(id: NoteId): Boolean {
+        return try {
+            val local = noteDao.getNotesByIds(listOf(id.value)).firstOrNull() ?: return true
+            // a PENDING/ERROR note has a local edit that hasn't even been pushed yet - leave it
+            // alone entirely. CONFLICT is different: the push already happened and lost, so we
+            // still want to learn the real server state (see below).
+            if (local.status == NoteStatus.PENDING.name || local.status == NoteStatus.ERROR.name) {
+                return true
+            }
+
+            // 204 (empty body) when version matches remote version
+            val response = notesService.getById(id.value, local.version)
+            when {
+                response.code() == 204 -> true // local version is already up-to-date
+                response.code() == 404 -> {
+                    // gone from the server forever, delete it from local cache
+                    noteDao.deleteNotes(listOf(id.value))
+                    true
+                }
+                response.isSuccessful -> {
+                    val remote = response.body() ?: run {
+                        errorLogger.logError(
+                            IllegalStateException("2xx with no body for note ${id.value}"),
+                            "Failed to refresh note ${id.value}",
+                        )
+                        return false
+                    }
+                    when {
+                        remote.deleted -> {
+                            // deleted on another device wins
+                            noteDao.deleteNotes(listOf(id.value))
+                        }
+                        local.status == NoteStatus.CONFLICT.name -> {
+                            // let user decide what to do, KEEP_MINE/KEEP_REMOTE
+                        }
+                        else -> noteDao.upsertNote(remote.toNote().toEntity())
+                    }
+                    true
+                }
+                else -> false
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            errorLogger.logError(e, "Failed to refresh note ${id.value}")
+            false
+        }
+    }
+
     override suspend fun resolveConflict(note: Note, resolution: ConflictResolution): ResolveConflictResult {
         val expectedVersion = note.conflictServerVersion ?: note.version
         val request = ResolveConflictRequestDto(

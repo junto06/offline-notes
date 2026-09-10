@@ -12,5 +12,6 @@ interface NoteRepository {
     suspend fun saveNote(note: Note)
     suspend fun syncNotes(): Boolean
     suspend fun fetchNotes(): Boolean
+    suspend fun refreshNote(id: NoteId): Boolean
     suspend fun resolveConflict(note: Note, resolution: ConflictResolution): ResolveConflictResult
 }

@@ -1,5 +1,7 @@
 package com.mudassar.notes.presentation.edit
 
+import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,8 +15,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.viewModels
@@ -24,6 +28,7 @@ import com.mudassar.notes.design.AppHeader
 import com.mudassar.notes.design.FullScreenLoader
 import com.mudassar.notes.models.Note
 import com.mudassar.notes.models.NoteStatus
+import com.mudassar.notes.presentation.R
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -33,6 +38,17 @@ class FragmentNoteEdit : BaseFragment() {
     @Composable
     override fun UiContent() {
         val state by viewModel.state.collectAsStateWithLifecycle()
+
+        val context = LocalContext.current
+        LaunchedEffect(Unit) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    NoteEditEvent.NoteDeletedRemotely ->
+                        showNoteDeletedMessage(context)
+                }
+            }
+        }
+
         when (val current = state) {
             NoteEditUiState.Loading -> FullScreenLoader()
             is NoteEditUiState.Editing -> NoteEditContent(
@@ -52,6 +68,14 @@ class FragmentNoteEdit : BaseFragment() {
                 onBackClicked = viewModel::onBackClicked,
             )
         }
+    }
+
+    private fun showNoteDeletedMessage(context: Context) {
+        Toast.makeText(
+            context,
+            context.getString(R.string.note_edit_deleted_remotely),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 }
 
@@ -109,7 +133,11 @@ private fun NoteEditContent(
             Button(onClick = onSaveClicked, modifier = Modifier.fillMaxWidth()) {
                 Text("Save")
             }
-            Button(onClick = onDeleteClicked, enabled = isSaved, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onDeleteClicked,
+                enabled = isSaved,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Delete")
             }
         }
@@ -160,10 +188,18 @@ private fun ConflictContent(
                 .padding(top = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = onKeepMineClicked, enabled = !isResolving, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onKeepMineClicked,
+                enabled = !isResolving,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Keep my version")
             }
-            Button(onClick = onKeepRemoteClicked, enabled = !isResolving, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onKeepRemoteClicked,
+                enabled = !isResolving,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text("Keep server version")
             }
             if (isResolving) {
