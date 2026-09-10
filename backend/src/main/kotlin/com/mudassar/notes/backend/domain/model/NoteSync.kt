@@ -9,6 +9,7 @@ data class NoteSync(
     val updatedAt: Long,
     val operation: SyncOperation,
     val version: Long,
+    val deleted: Boolean = false,
 )
 
 enum class SyncOperation {

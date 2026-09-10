@@ -38,6 +38,7 @@ fun NoteSync.toResponseDto(): NoteResponseDto = NoteResponseDto(
     createdAt = createdAt,
     updatedAt = updatedAt,
     version = version,
+    deleted = deleted,
 )
 
 fun ResolveConflictRequestDto.toDomain(userId: UserId, id: String): ResolveNotesConflictRequest = ResolveNotesConflictRequest(

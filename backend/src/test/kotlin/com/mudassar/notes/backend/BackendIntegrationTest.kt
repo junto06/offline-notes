@@ -111,5 +111,56 @@ class BackendIntegrationTest {
         )
         assertThat(resolveResponse.statusCode).isEqualTo(HttpStatus.OK)
         assertThat(requireNotNull(resolveResponse.body).title).isEqualTo("Test title")
+        assertThat(resolveResponse.body!!.deleted).isFalse()
+    }
+
+    @Test
+    fun `delete is a tombstone, not a removal`() {
+        val email = "${UUID.randomUUID()}@example.com"
+        restTemplate.postForEntity(
+            "/auth/signup",
+            HttpEntity(SignupRequestDto(email = email, password = "password", name = "Test User"), headers()),
+            SignupResponseDto::class.java,
+        )
+        val loginResponse = restTemplate.postForEntity(
+            "/auth/login",
+            HttpEntity(LoginRequestDto(email = email, password = "password"), headers()),
+            LoginResponseDto::class.java,
+        )
+        val accessToken = requireNotNull(loginResponse.body).accessToken
+        val authHeaders = headers().apply { setBearerAuth(accessToken) }
+
+        val noteId = UUID.randomUUID().toString()
+        val note = NoteDto(
+            id = noteId,
+            title = "To be deleted",
+            content = "content",
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis(),
+            operation = "UPDATE",
+            version = 0,
+        )
+        restTemplate.postForEntity(
+            "/notes/sync",
+            HttpEntity(listOf(note), authHeaders),
+            SyncNotesResponseDto::class.java,
+        )
+
+        val deleteNote = note.copy(updatedAt = System.currentTimeMillis(), operation = "DELETE", version = 1)
+        val deleteResponse = restTemplate.postForEntity(
+            "/notes/sync",
+            HttpEntity(listOf(deleteNote), authHeaders),
+            SyncNotesResponseDto::class.java,
+        )
+        assertThat(requireNotNull(deleteResponse.body).conflicts).isEmpty()
+
+        // The row is a tombstone, not gone - it still comes back from a fetch, flagged deleted.
+        val getAllResponse = restTemplate.exchange(
+            "/notes",
+            HttpMethod.GET,
+            HttpEntity<Void>(authHeaders),
+            Array<NoteResponseDto>::class.java,
+        )
+        assertThat(requireNotNull(getAllResponse.body).first { it.id == noteId }.deleted).isTrue()
     }
 }

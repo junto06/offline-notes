@@ -39,6 +39,7 @@ private fun NoteEntity.toDomain(): NoteSync = NoteSync(
     updatedAt = updatedAt,
     operation = SyncOperation.UPDATE,
     version = version,
+    deleted = deleted,
 )
 
 private fun NoteSync.toEntity(): NoteEntity = NoteEntity(
@@ -49,4 +50,5 @@ private fun NoteSync.toEntity(): NoteEntity = NoteEntity(
     createdAt = createdAt,
     updatedAt = updatedAt,
     version = version,
+    deleted = deleted,
 )

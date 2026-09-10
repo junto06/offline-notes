@@ -27,6 +27,7 @@ data class NoteResponseDto(
     val createdAt: Long,
     val updatedAt: Long,
     val version: Long,
+    val deleted: Boolean,
 )
 
 data class ResolveConflictRequestDto(
