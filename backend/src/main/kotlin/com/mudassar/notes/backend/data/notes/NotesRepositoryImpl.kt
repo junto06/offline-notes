@@ -44,7 +44,16 @@ class NotesRepositoryImpl(
                     ),
                 )
             } else {
-                NotesStore.Update(newValue = null, result = null)
+                // Tombstone rather than remove the row so other devices
+                // can learn about the note delete on their next sync
+                NotesStore.Update(
+                    newValue = existing?.copy(
+                        deleted = true,
+                        version = existing.version + 1,
+                        updatedAt = note.updatedAt,
+                    ),
+                    result = null,
+                )
             }
         }
 

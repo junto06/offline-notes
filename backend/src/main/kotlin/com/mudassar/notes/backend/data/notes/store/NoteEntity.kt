@@ -19,4 +19,5 @@ class NoteEntity(
     @Column(name = "updated_at")
     val updatedAt: Long,
     val version: Long,
+    val deleted: Boolean,
 )

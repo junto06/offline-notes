@@ -5,6 +5,8 @@ import com.mudassar.notes.backend.domain.model.ConflictResolution
 import com.mudassar.notes.backend.domain.model.ResolveNotesConflictOutcome
 import com.mudassar.notes.backend.domain.model.ResolveNotesConflictRequest
 import com.mudassar.notes.backend.domain.model.NotesSaveResult
+import com.mudassar.notes.backend.domain.model.ResolveNotesConflictOutcome.Conflict
+import com.mudassar.notes.backend.domain.model.ResolveNotesConflictOutcome.Resolved
 import com.mudassar.notes.backend.domain.model.SyncOperation
 import com.mudassar.notes.backend.domain.repository.NotesRepository
 import com.mudassar.notes.backend.util.ClockProvider
@@ -20,7 +22,7 @@ class ResolveConflictUseCase(
 
         return when (request.resolution) {
             // Client discards its local edits and adopts whatever is currently on the server.
-            ConflictResolution.KEEP_REMOTE -> ResolveNotesConflictOutcome.Resolved(existing)
+            ConflictResolution.KEEP_REMOTE -> Resolved(existing)
 
             // Client's edits win, but only if nothing else changed the note since the client
             // last saw it - reuses the same optimistic-lock check as a normal sync save, so a
@@ -33,12 +35,13 @@ class ResolveConflictUseCase(
                     updatedAt = clockProvider().toEpochMilli(),
                     operation = SyncOperation.UPDATE,
                     version = request.expectedVersion,
+                    deleted = false, // Keeping mine
                 )
                 when (val result = notesRepository.save(candidate)) {
                     is NotesSaveResult.Success ->
-                        ResolveNotesConflictOutcome.Resolved(candidate.copy(version = result.version))
+                        Resolved(candidate.copy(version = result.version))
                     is NotesSaveResult.NotesConflict ->
-                        ResolveNotesConflictOutcome.Conflict(result.serverVersion, result.reason)
+                        Conflict(result.serverVersion, result.reason)
                 }
             }
         }
